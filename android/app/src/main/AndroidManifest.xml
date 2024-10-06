@@ -10,6 +10,14 @@
     <!-- To allow querying activities related to text processing -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- To allow Google Ads Permission -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
+    <!-- To allow Notification Permission -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>  <!-- FOR ANDROID 13  -->
 
     <application
         android:label="Pigeon VPN"
@@ -57,6 +65,20 @@
                 <action android:name="android.net.VpnService"/>
             </intent-filter>
         </service>
+        <!-- Add this service for the Google Ads -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-9209917785446409~3982982856"/>
+        <!-- Add this service for the Notifications -->
+        <receiver 
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+
     </application>
 
     <!-- Required to query activities that can process text -->

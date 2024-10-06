@@ -5,29 +5,46 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:lottie/lottie.dart';
+import 'package:openvpn_flutter/openvpn_flutter.dart';
+import 'package:pigen_vpn/ads_helper.dart';
 import 'package:pigen_vpn/colors.dart';
 import 'package:pigen_vpn/customText.dart';
 import 'package:pigen_vpn/size.dart';
+import 'package:pigen_vpn/vpn_status_manager.dart';
 import 'package:shimmer/shimmer.dart';
 import 'ip_info_model.dart';
 
-class IPInformationScreen extends StatefulWidget {
-  const IPInformationScreen({Key? key}) : super(key: key);
+class GloabScreen extends StatefulWidget {
+  final AdHelper adHelper;
+  const GloabScreen({Key? key, required this.adHelper}) : super(key: key);
 
   @override
-  _IPInformationScreenState createState() => _IPInformationScreenState();
+  _GloabScreenState createState() => _GloabScreenState();
 }
 
-class _IPInformationScreenState extends State<IPInformationScreen> {
+class _GloabScreenState extends State<GloabScreen> {
   IPInfo? _ipInfo;
   bool _isLoading = true;
   bool _isConnected = true;
   bool _isFetching = false; // For the shimmer effect
+  VpnStatus? currentStatus;
 
   @override
   void initState() {
     super.initState();
     checkInternetConnection();
+    // Use widget.adHelper instead of adHelper
+    widget.adHelper.createInterstitialAd();
+
+    // Listen to VPN status changes
+    VpnStatusManager().statusStream.listen((status) {
+      setState(() {
+        currentStatus = status;
+      });
+    });
+
+    // Initialize with the latest status if available
+    currentStatus = VpnStatusManager().currentStatus;
   }
 
   // Check for internet connectivity
@@ -110,9 +127,15 @@ class _IPInformationScreenState extends State<IPInformationScreen> {
     );
   }
 
+  void _showInterstitialAd() {
+    // Use widget.adHelper instead of adHelper
+    widget.adHelper.showInterstitialAd();
+  }
+
   @override
   void dispose() {
-    // Cancel any ongoing operations if needed here
+    // Use widget.adHelper instead of adHelper
+    widget.adHelper.disposeInterstitialAd();
     super.dispose();
   }
 
@@ -127,7 +150,7 @@ class _IPInformationScreenState extends State<IPInformationScreen> {
         excludeHeaderSemantics: true,
         scrolledUnderElevation: 0,
         title: const CustomText(
-          text: 'IP Information',
+          text: 'VP Status Information',
           fontSize: 22,
           color: AppColors.primaryColor,
           fontWeight: FontWeight.bold,
@@ -135,6 +158,8 @@ class _IPInformationScreenState extends State<IPInformationScreen> {
         leading: IconButton(
             onPressed: () {
               Navigator.pop(context);
+
+              _showInterstitialAd();
             },
             icon: const Icon(
               Icons.arrow_back,
@@ -166,20 +191,57 @@ class _IPInformationScreenState extends State<IPInformationScreen> {
               ? ListView(
                   padding: const EdgeInsets.all(10),
                   children: [
-                    buildInfoCard('IP Address', _ipInfo!.query, Icons.public),
-                    buildInfoCard('Country', _ipInfo!.country, Icons.flag),
                     buildInfoCard(
-                        'Region', _ipInfo!.regionName, Icons.location_city),
-                    buildInfoCard('City', _ipInfo!.city, Icons.location_on),
+                      'IP Address',
+                      _ipInfo!.query,
+                      Icons.public,
+                    ),
                     buildInfoCard(
-                        'ZIP Code', _ipInfo!.zip, Icons.markunread_mailbox),
+                      'Connected On',
+                      currentStatus?.connectedOn?.toString() ?? 'Not Connected',
+                      Icons.wifi,
+                      iconColor: Colors.green,
+                    ),
                     buildInfoCard(
-                        'Timezone', _ipInfo!.timezone, Icons.access_time),
-                    buildInfoCard('ISP', _ipInfo!.isp, Icons.wifi),
+                      'Duration',
+                      currentStatus?.duration?.toString() ?? '0:00:00',
+                      Icons.timer,
+                      iconColor: Colors.blue,
+                    ),
                     buildInfoCard(
-                        'Latitude', _ipInfo!.lat.toString(), Icons.gps_fixed),
-                    buildInfoCard('Longitude', _ipInfo!.lon.toString(),
-                        Icons.gps_not_fixed),
+                      'Downloading Speed in Bytes',
+                      currentStatus?.byteIn?.toString() ?? '0',
+                      Icons.download,
+                      iconColor: Colors.red,
+                    ),
+                    buildInfoCard(
+                      'uploading Speed in Bytes',
+                      currentStatus?.byteOut?.toString() ?? '0',
+                      Icons.upload,
+                      iconColor: Colors.orange,
+                    ),
+                    buildInfoCard(
+                      'Packets In',
+                      currentStatus?.packetsIn?.toString() ?? '0',
+                      Icons.arrow_downward,
+                      iconColor: Colors.purple,
+                    ),
+                    buildInfoCard(
+                      'Packets Out',
+                      currentStatus?.packetsOut?.toString() ?? '0',
+                      Icons.arrow_upward,
+                      iconColor: Colors.pink,
+                    ),
+                    buildInfoCard(
+                      'Latitude',
+                      _ipInfo!.lat.toString(),
+                      Icons.gps_fixed,
+                    ),
+                    buildInfoCard(
+                      'Longitude',
+                      _ipInfo!.lon.toString(),
+                      Icons.gps_not_fixed,
+                    ),
                   ],
                 )
               : Center(
@@ -251,14 +313,15 @@ class _IPInformationScreenState extends State<IPInformationScreen> {
   }
 
   // Reusable method to build a card widget for each IP information detail
-  Widget buildInfoCard(String title, String value, IconData icon) {
+  Widget buildInfoCard(String title, String value, IconData icon,
+      {Color iconColor = Colors.blue}) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 10),
       elevation: 4,
       shadowColor: AppColors.primaryColor.withOpacity(0.25),
       color: AppColors.whiteColor,
       child: ListTile(
-        leading: Icon(icon, color: Colors.blue),
+        leading: Icon(icon, color: iconColor),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(value),
       ),

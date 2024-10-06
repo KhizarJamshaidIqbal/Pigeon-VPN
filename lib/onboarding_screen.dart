@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lottie/lottie.dart';
+import 'package:pigen_vpn/ads_helper.dart';
 import 'package:pigen_vpn/colors.dart';
 import 'package:pigen_vpn/customText.dart';
 import 'package:pigen_vpn/customTextButton.dart';
@@ -13,7 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({Key? key}) : super(key: key);
+  final AdHelper adHelper;
+  const OnboardingScreen({Key? key, required this.adHelper}) : super(key: key);
 
   @override
   _OnboardingScreenState createState() => _OnboardingScreenState();
@@ -87,7 +89,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     text: "Get Started",
                     onPressed: () {
                       NavigationHelper.pushReplacement(
-                          context,  HomeScreen());
+                          context,
+                          HomeScreen(
+                            adHelper: widget.adHelper,
+                          ));
                     },
                     width: AppSizes.screenHeight(context),
                   )
@@ -98,7 +103,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         text: "Skip",
                         onPressed: () {
                           NavigationHelper.pushReplacement(
-                              context,  HomeScreen());
+                              context,
+                              HomeScreen(
+                                adHelper: widget.adHelper,
+                              ));
                         },
                         width: 65,
                       ),

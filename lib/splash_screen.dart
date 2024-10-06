@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:pigen_vpn/ads_helper.dart';
 import 'package:pigen_vpn/home_screen.dart';
 import 'package:pigen_vpn/navigation_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,7 +10,8 @@ import 'dart:async';
 import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  final AdHelper adHelper;
+  const SplashScreen({Key? key, required this.adHelper}) : super(key: key);
 
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -31,7 +33,12 @@ class _SplashScreenState extends State<SplashScreen> {
     // Navigate to the appropriate screen after 3 seconds
     Timer(const Duration(seconds: 3), () {
       NavigationHelper.pushReplacement(
-          context, seenOnboard ? HomeScreen() : const OnboardingScreen());
+          context,
+          seenOnboard
+              ? HomeScreen(adHelper: widget.adHelper)
+              : OnboardingScreen(
+                  adHelper: widget.adHelper,
+                ));
     });
   }
 

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:pigen_vpn/ads_helper.dart';
 import 'package:pigen_vpn/splash_screen.dart';
 import 'package:pigen_vpn/subscription_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  // Ad Helper Class
+  final adHelper = AdHelper();
+  await adHelper.initialize();
+  runApp(MyApp(adHelper: adHelper));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({
-    Key? key,
-  }) : super(key: key);
+  final AdHelper adHelper;
+  const MyApp({Key? key, required this.adHelper}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +28,9 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: const SplashScreen(),
+        home: SplashScreen(
+          adHelper: adHelper,
+        ),
       ),
     );
   }

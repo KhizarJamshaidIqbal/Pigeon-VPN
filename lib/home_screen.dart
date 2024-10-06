@@ -1,17 +1,26 @@
-import 'package:flutter/cupertino.dart';
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:pigen_vpn/ads_helper.dart';
 import 'package:pigen_vpn/colors.dart';
 import 'package:pigen_vpn/customText.dart';
 import 'package:pigen_vpn/customTextButton.dart';
-import 'package:pigen_vpn/ip_information_screen.dart';
+import 'package:pigen_vpn/custom_appbar.dart';
+import 'package:pigen_vpn/notification_services.dart';
+import 'package:pigen_vpn/vpn_status_screen.dart';
 import 'package:pigen_vpn/navigation_helper.dart';
 import 'dart:async';
 import 'package:openvpn_flutter/openvpn_flutter.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pigen_vpn/size.dart';
+import 'package:pigen_vpn/vpn_info_screen.dart';
+import 'package:pigen_vpn/vpn_status_manager.dart';
 
 class HomeScreen extends StatefulWidget {
-  HomeScreen({Key? key}) : super(key: key);
+  final AdHelper adHelper;
+  const HomeScreen({Key? key, required this.adHelper}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -19,10 +28,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late OpenVPN engine;
-
   VpnStatus? status;
 
   String buttonText = "Tap to Connect";
+// Notification
+  final NotificationService _notificationService = NotificationService();
 
   Gradient buttonColor = LinearGradient(
       begin: Alignment.topLeft,
@@ -32,19 +42,21 @@ class _HomeScreenState extends State<HomeScreen> {
         const Color(0xffCB3066).withOpacity(0.35),
       ]);
 
-  // Variable to track the connection duration
-  int connectionDuration = 0;
-
-  Timer? timer;
-
   @override
   void initState() {
     super.initState();
-
+    // Use widget.adHelper instead of adHelper
+    widget.adHelper.createInterstitialAd();
+    widget.adHelper.createBannerAds();
+    // for Notification
+    _notificationService.initialize();
+    // For VPN
     engine = OpenVPN(
       onVpnStatusChanged: (data) {
         setState(() {
           status = data;
+          // Update VPN status in VpnStatusManager
+          VpnStatusManager().updateStatus(data);
         });
       },
       onVpnStageChanged: (data, raw) {
@@ -58,8 +70,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Color(0xff16BFFD),
                   const Color(0xff33CB30).withOpacity(0.35),
                 ]);
+            _showInterstitialAd(); // Show ad when connected
+            // showConnectedNotification
+            _notificationService.showConnectedNotification();
             // Start the timer to count the connection duration
-            startConnectionTimer();
+            // startConnectionTimer();
           } else if (data == VPNStage.connecting) {
             buttonText = "Connecting";
             buttonColor = LinearGradient(
@@ -78,8 +93,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Color(0xff16BFFD),
                   const Color(0xffDF1A1A).withOpacity(0.35),
                 ]);
+            _showInterstitialAd(); // Show ad when disconnected
+            //showDisconnectedNotification
+            _notificationService.showDisconnectedNotification();
             // Stop the timer and reset connection duration
-            stopConnectionTimer();
+            // stopConnectionTimer();
+
             // Reset button text after a delay
             Future.delayed(const Duration(seconds: 2), () {
               setState(() {
@@ -118,7 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Color(0xff16BFFD),
                   const Color(0xff33CB30).withOpacity(0.35),
                 ]);
-            startConnectionTimer(); // Start the timer on connection
+
+            // startConnectionTimer();
           } else if (stage == VPNStage.disconnected) {
             buttonText = "Tap to Connect";
             buttonColor = LinearGradient(
@@ -128,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Color(0xff16BFFD),
                   const Color(0xffCB3066).withOpacity(0.35),
                 ]);
-            stopConnectionTimer(); // Stop the timer if disconnected
+            // stopConnectionTimer();
           }
         });
       },
@@ -138,20 +158,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       },
     );
-  }
-
-  void startConnectionTimer() {
-    connectionDuration = 0; // Reset duration when starting
-    timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
-      setState(() {
-        connectionDuration++;
-      });
-    });
-  }
-
-  void stopConnectionTimer() {
-    timer?.cancel(); // Stop the timer when disconnected
-    connectionDuration = 0; // Reset duration
   }
 
   // Method to load the VPN configuration file from assets
@@ -174,6 +180,120 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
   }
 
+  void _showInterstitialAd() {
+    // Use widget.adHelper instead of adHelper
+    widget.adHelper.showInterstitialAd();
+  }
+
+  @override
+  void dispose() {
+    // Use widget.adHelper instead of adHelper
+    widget.adHelper.disposeInterstitialAd();
+    widget.adHelper.disposeBannerAds();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.whiteColor,
+      appBar: CustomAppBar(
+        titleText: 'Pigeon VPN',
+        onPressed: () {
+          if (buttonText == 'Connected') {
+            NavigationHelper.push(
+                context,
+                GloabScreen(
+                  adHelper: widget.adHelper,
+                ));
+          } else {
+            setState(() {
+              Fluttertoast.showToast(
+                msg: 'VPN is Not Connnected',
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.BOTTOM,
+                timeInSecForIosWeb: 1,
+                backgroundColor: AppColors.primaryColor,
+                textColor: Colors.white,
+                fontSize: 16.0,
+              );
+            });
+          }
+        },
+        actionIcon: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              icon: const Icon(
+                Icons.info_outlined,
+                color: AppColors.primaryColor,
+                size: 30,
+              ),
+              onPressed: () => NavigationHelper.push(
+                  context,
+                  VpnInfoScreen(
+                    adHelper: widget.adHelper,
+                  )),
+            ),
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          if (widget.adHelper.topBannerAd != null)
+            Container(
+              alignment: Alignment.center,
+              width: widget.adHelper.topBannerAd!.size.width.toDouble(),
+              height: widget.adHelper.topBannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: widget.adHelper.topBannerAd!),
+            ),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Center(child: _buildVPNButton()),
+                35.h,
+                SizedBox(
+                  width: 160,
+                  child: CustomTextButton(
+                      text: buttonText,
+                      onPressed: () {
+                        if (buttonText == "Connected") {
+                          engine.disconnect(); // Disconnect the VPN
+                          // stopConnectionTimer();
+                        } else {
+                          buttonText =
+                              "Connecting"; // Change text to "Connecting"
+                          buttonColor = LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.topRight,
+                              colors: [
+                                const Color(0xff16BFFD),
+                                const Color.fromARGB(255, 46, 84, 189)
+                                    .withOpacity(0.35),
+                              ]); // Change button color
+                          setState(() {}); // Trigger a rebuild
+                          initPlatformState(); // Start connecting to VPN
+                        }
+                      }),
+                ),
+              ],
+            ),
+          ),
+          if (widget.adHelper.bottomBannerAd != null)
+            Container(
+              alignment: Alignment.center,
+              width: widget.adHelper.bottomBannerAd!.size.width.toDouble(),
+              height: widget.adHelper.bottomBannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: widget.adHelper.bottomBannerAd!),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // VPN Button
   Widget _buildVPNButton() {
     return Semantics(
       button: true,
@@ -183,7 +303,20 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () {
           if (buttonText == "Connected") {
             engine.disconnect(); // Disconnect the VPN
-            stopConnectionTimer(); // Stop the timer when disconnecting
+            setState(() {
+              // Show Toast message
+              Fluttertoast.showToast(
+                msg: 'VPN is DisConnnected',
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.BOTTOM,
+                timeInSecForIosWeb: 1,
+                backgroundColor: AppColors.primaryColor,
+                textColor: Colors.white,
+                fontSize: 16.0,
+              );
+              //
+            });
+            // stopConnectionTimer();
           } else {
             buttonText = "Connecting"; // Change text to "Connecting"
             buttonColor = LinearGradient(
@@ -193,6 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Color(0xff16BFFD),
                   const Color.fromARGB(255, 46, 84, 189).withOpacity(0.35),
                 ]); // Change button color
+
             setState(() {}); // Trigger a rebuild
             initPlatformState(); // Start connecting to VPN
           }
@@ -240,96 +374,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Calculate hours, minutes, and seconds for display
-    int hours = connectionDuration ~/ 3600;
-    int minutes = (connectionDuration % 3600) ~/ 60;
-    int seconds = connectionDuration % 60;
-
-    // Format the duration string
-    String durationText =
-        '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    return Scaffold(
-      backgroundColor: AppColors.whiteColor,
-      appBar: AppBar(
-        backgroundColor: AppColors.whiteColor,
-        centerTitle: true,
-        title: const CustomText(
-          text: 'Pigeon VPN',
-          color: AppColors.primaryColor,
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(
-                    CupertinoIcons.globe,
-                    color: AppColors.primaryColor,
-                    size: 30,
-                  ),
-                  onPressed: () => NavigationHelper.push(
-                      context, const IPInformationScreen()),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.info_outline_rounded,
-                    color: AppColors.primaryColor,
-                    size: 30,
-                  ),
-                  onPressed: () => NavigationHelper.push(
-                      context, const IPInformationScreen()),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Center(child: _buildVPNButton()),
-          35.h,
-          SizedBox(
-            width: 160,
-            child: CustomTextButton(
-                text: buttonText,
-                onPressed: () {
-                  if (buttonText == "Connected") {
-                    engine.disconnect(); // Disconnect the VPN
-                    stopConnectionTimer(); // Stop the timer when disconnecting
-                  } else {
-                    buttonText = "Connecting"; // Change text to "Connecting"
-                    buttonColor = LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.topRight,
-                        colors: [
-                          const Color(0xff16BFFD),
-                          const Color.fromARGB(255, 46, 84, 189)
-                              .withOpacity(0.35),
-                        ]); // Change button color
-                    setState(() {}); // Trigger a rebuild
-                    initPlatformState(); // Start connecting to VPN
-                  }
-                }),
-          ),
-          10.h,
-          CustomText(
-            text: durationText,
-            color: AppColors.blackColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          )
-        ],
       ),
     );
   }
